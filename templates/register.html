@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Registration — Scholar Tracker</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'"/>
+  <style>
+    :root{--ink:#0f1923;--paper:#f7f4ef;--cream:#ede8df;--gold:#c9a84c;--teal:#2a6b6b;}
+    body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--paper);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;}
+    .reg-wrap{display:flex;gap:2rem;width:100%;max-width:860px;align-items:flex-start;}
+    .reg-card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.07);padding:2.5rem;flex:1;}
+    .reg-card h2{font-family:Georgia,serif;font-size:1.6rem;margin-bottom:.25rem;}
+    .reg-card .sub{color:#888;font-size:.875rem;margin-bottom:1.75rem;}
+    .form-label{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#555;}
+    .form-control,.form-select{border:1px solid var(--cream);border-radius:8px;padding:.65rem 1rem;font-size:.9rem;}
+    .form-control:focus,.form-select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.15);}
+    .btn-register{background:var(--ink);color:#fff;border:none;border-radius:8px;padding:.8rem;font-size:.9rem;font-weight:600;width:100%;}
+    .btn-register:hover{background:#1e3044;color:#fff;}
+    .back-link{text-align:center;margin-top:1rem;font-size:.85rem;color:#888;}
+    .back-link a{color:var(--teal);font-weight:600;text-decoration:none;}
+    .alert{border:none;border-radius:8px;font-size:.85rem;}
+    .info-card{background:var(--ink);border-radius:16px;padding:2rem;width:280px;flex-shrink:0;}
+    @media(max-width:700px){.reg-wrap{flex-direction:column;}.info-card{width:100%;}}
+  </style>
+</head>
+<body>
+<div class="reg-wrap">
+  <div class="reg-card">
+    <div style="margin-bottom:1.5rem;">
+      <div style="display:inline-flex;align-items:center;gap:.5rem;background:#0f1923;border-radius:10px;padding:.6rem 1rem;">
+        <i class="fas fa-graduation-cap" style="color:#c9a84c;"></i>
+        <span style="color:#fff;font-size:.8rem;font-weight:600;letter-spacing:.06em;">SCHOLAR TRACKER</span>
+      </div>
+    </div>
+    <h2>Student Registration</h2>
+    <p class="sub">Create your account and select your assigned teacher</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat,msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show">{{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <form method="POST" action="{{ url_for('register') }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Full Name</label>
+        <input type="text" name="name" class="form-control" placeholder="Your full name" required/>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="you@university.edu" required/>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-control" placeholder="Minimum 6 characters" required/>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Select Your Teacher / Guide <span style="color:var(--gold);">*</span></label>
+        <select name="guide_id" class="form-select" required>
+          <option value="">— Choose your assigned teacher —</option>
+          {% for g in guides %}
+          <option value="{{ g.id }}">{{ g.name }}</option>
+          {% endfor %}
+        </select>
+        {% if not guides %}
+        <div class="form-text" style="color:#c0392b;">
+          <i class="fas fa-exclamation-circle me-1"></i>
+          No teachers registered yet. Please ask your HOD/Admin to add teachers first.
+        </div>
+        {% else %}
+        <div class="form-text">Your thesis submissions will be sent to this teacher for review.</div>
+        {% endif %}
+      </div>
+      <button type="submit" class="btn-register" {% if not guides %}disabled{% endif %}>
+        Create Account <i class="fas fa-arrow-right ms-1"></i>
+      </button>
+    </form>
+    <div class="back-link">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></div>
+  </div>
+
+  <div class="info-card">
+    <i class="fas fa-info-circle fa-lg mb-3" style="color:var(--gold);display:block;"></i>
+    <h6 style="color:#fff;font-size:.9rem;margin-bottom:.75rem;">How it works</h6>
+    <div style="color:rgba(255,255,255,.5);font-size:.8rem;line-height:1.8;">
+      <p><strong style="color:rgba(255,255,255,.8);">1. Register</strong><br/>Create your account and pick your teacher.</p>
+      <p><strong style="color:rgba(255,255,255,.8);">2. Upload</strong><br/>Submit your thesis drafts — each upload is versioned automatically.</p>
+      <p><strong style="color:rgba(255,255,255,.8);">3. Get Feedback</strong><br/>Your teacher reviews and approves or requests changes.</p>
+      <p style="margin:0;"><strong style="color:rgba(255,255,255,.8);">4. Repository</strong><br/>Once approved, your work appears in the shared repository for all students.</p>
+    </div>
+    <div style="margin-top:1.5rem;padding:.75rem;background:rgba(201,168,76,.12);border-radius:8px;font-size:.75rem;color:rgba(255,255,255,.5);">
+      <i class="fas fa-lock me-1" style="color:var(--gold);"></i>
+      Teachers are registered by the HOD/Admin only.
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Milestones — Scholar Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Milestone Tracker</h2>
+  <p>Assign and track thesis milestones for your students</p>
+</div>
+
+<div class="row g-4">
+  <!-- ADD MILESTONE FORM -->
+  <div class="col-lg-4">
+    <div class="card" style="border-top:3px solid var(--gold);">
+      <div class="card-header"><i class="fas fa-plus me-2 text-muted"></i>Add Milestone</div>
+      <div class="card-body">
+        <form method="POST">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600;">Task Name</label>
+            <input type="text" name="task_name" class="form-control" placeholder="e.g. Synopsis Submission"
+              style="border:1px solid var(--cream);border-radius:8px;" required/>
+            <div class="mt-2 d-flex flex-wrap gap-1">
+              {% for preset in ['Proposal', 'Synopsis', 'Literature Review', 'Methodology', 'Final Report', 'Viva'] %}
+              <span class="badge" style="background:var(--cream);color:var(--ink);cursor:pointer;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;"
+                onclick="document.querySelector('[name=task_name]').value='{{ preset }}'">{{ preset }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600;">Due Date</label>
+            <input type="date" name="due_date" class="form-control" style="border:1px solid var(--cream);border-radius:8px;" required/>
+          </div>
+          <div class="mb-4">
+            <label class="form-label" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600;">Assign to Student</label>
+            <select name="student_id" class="form-select" style="border:1px solid var(--cream);border-radius:8px;">
+              <option value="">— All my students —</option>
+              {% for s in students %}
+              <option value="{{ s.id }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-gold w-100" style="border-radius:8px;">
+            <i class="fas fa-plus me-1"></i> Add Milestone
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MILESTONES LIST -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-tasks me-2 text-muted"></i>All Milestones</div>
+      <div class="card-body p-0">
+        {% if milestones %}
+        <table class="table table-hover mb-0">
+          <thead><tr>
+            <th class="ps-3">Task</th>
+            <th>Student</th>
+            <th>Due Date</th>
+            <th>Status</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+          {% for m in milestones %}
+          <tr>
+            <td class="ps-3" style="font-weight:500;font-size:.875rem;{% if m.completed %}text-decoration:line-through;color:#aaa;{% endif %}">{{ m.task_name }}</td>
+            <td style="font-size:.82rem;color:#555;">{{ m.student_name if m.student_name else '—' }}</td>
+            <td style="font-size:.82rem;">
+              {{ m.due_date | dateformat('%d %b %Y') }}
+              {% if not m.completed and m.due_date < today %}
+              <span style="color:var(--red);font-size:.72rem;"><i class="fas fa-exclamation-circle ms-1"></i></span>
+              {% endif %}
+            </td>
+            <td>
+              {% if m.completed %}
+              <span class="badge-status status-Approved">Completed</span>
+              {% else %}
+              <span class="badge-status status-Pending">Pending</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('toggle_milestone', m_id=m.id) }}" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-secondary" style="border-radius:6px;font-size:.72rem;">
+                  {% if m.completed %}<i class="fas fa-undo me-1"></i>Undo{% else %}<i class="fas fa-check me-1"></i>Done{% endif %}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="fas fa-tasks fa-2x mb-3 d-block" style="color:var(--cream)"></i>
+          No milestones yet. Add one using the form.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const dateInput = document.querySelector('[name=due_date]');
+if (dateInput) dateInput.min = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

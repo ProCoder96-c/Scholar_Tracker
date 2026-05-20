@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}My Students — Scholar Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>My Students</h2>
+  <p>Overview of all students assigned to you and their submission history</p>
+</div>
+
+{% if student_data %}
+<div class="row g-4">
+  {% for item in student_data %}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;flex-shrink:0;">
+            {{ item.user['name'][0] }}
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:.9rem;">{{ item.user['name'] }}</div>
+            <div style="font-size:.72rem;color:#999;">{{ item.user['email'] }}</div>
+          </div>
+        </div>
+        {% if item.latest %}
+        <span class="badge-status status-{{ item.latest.status.replace(' ','') }}" style="font-size:.72rem;">{{ item.latest.status }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if item.submissions %}
+        <table class="table table-sm mb-0">
+          <thead><tr>
+            <th class="ps-3">Project</th>
+            <th>Ver.</th>
+            <th>Status</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+          {% for sub in item.submissions %}
+          <tr>
+            <td class="ps-3" style="font-size:.82rem;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ sub.project_title }}</td>
+            <td><span class="badge bg-light text-dark border" style="font-size:.7rem;">v{{ sub.version_number }}</span></td>
+            <td><span class="badge-status status-{{ sub.status.replace(' ','') }}" style="font-size:.68rem;padding:.2rem .6rem;">{{ sub.status }}</span></td>
+            <td>
+              <a href="{{ url_for('submission_detail', sub_id=sub.id) }}" class="btn btn-sm btn-outline-secondary" style="border-radius:5px;font-size:.7rem;padding:.2rem .5rem;">
+                {% if sub.status=='Pending' %}Review{% else %}View{% endif %}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted text-center py-3" style="font-size:.82rem;">No submissions yet.</p>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-transparent" style="font-size:.75rem;color:#aaa;">
+        {{ item.submissions|length }} submission{{ 's' if item.submissions|length != 1 }} total
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="fas fa-users fa-2x mb-3 d-block" style="color:var(--cream)"></i>
+  No students assigned to you yet. Students select their guide during registration.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Repository — Scholar Tracker{% endblock %}
+
+{% block content %}
+<div class="search-hero">
+  <h3>Approved Thesis Repository</h3>
+  <p>Discover and explore approved research projects from all scholars</p>
+  <form method="GET" action="{{ url_for('repository') }}">
+    <div class="search-input-wrap">
+      <input type="text" name="q" value="{{ query }}" placeholder="Search by title, keyword, or topic…" autocomplete="off"/>
+      <button type="submit"><i class="fas fa-search"></i></button>
+    </div>
+  </form>
+</div>
+
+<!-- RESULTS -->
+{% if query %}
+<p class="text-muted mb-3" style="font-size:.875rem;">
+  Found <strong>{{ results|length }}</strong> approved project{{ 's' if results|length != 1 }} for "<strong>{{ query }}</strong>"
+</p>
+{% else %}
+<p class="text-muted mb-3" style="font-size:.875rem;">Showing all <strong>{{ results|length }}</strong> approved project{{ 's' if results|length != 1 }}</p>
+{% endif %}
+
+{% if results %}
+<div class="row g-3">
+  {% for r in results %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100" style="transition:box-shadow .2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <span class="badge-status status-Approved" style="font-size:.7rem;">Approved</span>
+          <span class="badge" style="background:var(--cream);color:var(--ink);font-size:.7rem;">v{{ r.version_number }} · {{ r.file_count }} file{{ "s" if r.file_count != 1 }}</span>
+        </div>
+        <h6 style="font-family:Georgia,'Times New Roman',serif;font-size:1rem;line-height:1.35;margin-bottom:.5rem;">{{ r.project_title }}</h6>
+        {% if r.description %}
+        <p style="font-size:.8rem;color:#777;line-height:1.5;margin-bottom:.75rem;">
+          {{ r.description[:120] }}{% if r.description|length > 120 %}…{% endif %}
+        </p>
+        {% endif %}
+        <div style="font-size:.75rem;color:#aaa;border-top:1px solid var(--cream);padding-top:.6rem;margin-top:auto;">
+          <i class="fas fa-user me-1"></i>{{ r.student_name }}
+          &nbsp;·&nbsp;
+          <i class="fas fa-calendar me-1"></i>{{ r.upload_date | dateformat('%b %Y') }}
+        </div>
+      </div>
+      <div class="card-footer bg-transparent border-top-0 pt-0 pb-3 px-3">
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('submission_detail', sub_id=r.id) }}" class="btn btn-sm btn-outline-secondary flex-grow-1" style="border-radius:7px;font-size:.78rem;">
+            <i class="fas fa-eye me-1"></i> View Details
+          </a>
+          <a href="{{ url_for('download', filename=r.file_name) }}" class="btn btn-sm btn-gold" style="border-radius:7px;font-size:.78rem;">
+            <i class="fas fa-download"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+  <div style="font-size:3rem;color:var(--cream);margin-bottom:1rem;"><i class="fas fa-search"></i></div>
+  {% if query %}
+  <h5>No approved projects found for "{{ query }}"</h5>
+  <p class="text-muted">Try different keywords or <a href="{{ url_for('repository') }}">browse all projects</a>.</p>
+  {% else %}
+  <h5 style="color:#aaa;">No approved projects yet</h5>
+  <p class="text-muted">Approved submissions will appear here.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

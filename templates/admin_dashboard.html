@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — Scholar Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Admin / HOD Dashboard</h2>
+  <p>Manage teachers, students, and platform overview</p>
+</div>
+
+<!-- STATS -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-total">
+      <div class="stat-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+      <div><div class="stat-value">{{ teachers|length }}</div><div class="stat-label">Teachers</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-total" style="background:#e8f0fe;">
+      <div class="stat-icon" style="background:#3b5bdb;color:#fff;"><i class="fas fa-user-graduate"></i></div>
+      <div><div class="stat-value">{{ students|length }}</div><div class="stat-label">Students</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-approved">
+      <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+      <div><div class="stat-value">{{ approved }}</div><div class="stat-label">Approved Projects</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-pending">
+      <div class="stat-icon"><i class="fas fa-clock"></i></div>
+      <div><div class="stat-value">{{ pending }}</div><div class="stat-label">Pending Review</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- ADD TEACHER FORM -->
+  <div class="col-lg-4">
+    <div class="card" style="border-top:3px solid var(--gold);">
+      <div class="card-header"><i class="fas fa-user-plus me-2 text-muted"></i>Register New Teacher</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin_add_teacher') }}">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#555;">Full Name</label>
+            <input type="text" name="name" class="form-control" placeholder="Dr. Full Name" required style="border:1px solid var(--cream);border-radius:8px;"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#555;">Email</label>
+            <input type="email" name="email" class="form-control" placeholder="teacher@university.edu" required style="border:1px solid var(--cream);border-radius:8px;"/>
+          </div>
+          <div class="mb-4">
+            <label class="form-label" style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#555;">Password</label>
+            <input type="password" name="password" class="form-control" placeholder="Set login password" required style="border:1px solid var(--cream);border-radius:8px;"/>
+            <div class="form-text">Share this with the teacher directly.</div>
+          </div>
+          <button type="submit" class="btn btn-gold w-100" style="border-radius:8px;">
+            <i class="fas fa-plus me-1"></i> Add Teacher
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ASSIGN GUIDE TO STUDENT -->
+    <div class="card mt-3">
+      <div class="card-header"><i class="fas fa-link me-2 text-muted"></i>Assign Guide to Student</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('admin_assign_guide') }}">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#555;">Student</label>
+            <select name="student_id" class="form-select" required style="border:1px solid var(--cream);border-radius:8px;">
+              <option value="">— Select student —</option>
+              {% for s in students %}
+              <option value="{{ s.id }}">{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#555;">Assign Guide</label>
+            <select name="guide_id" class="form-select" style="border:1px solid var(--cream);border-radius:8px;">
+              <option value="">— No guide —</option>
+              {% for t in teachers %}
+              <option value="{{ t.id }}">{{ t.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-teal w-100" style="border-radius:8px;">
+            <i class="fas fa-link me-1"></i> Assign
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEACHERS LIST -->
+  <div class="col-lg-8">
+    <div class="card mb-4">
+      <div class="card-header"><i class="fas fa-chalkboard-teacher me-2 text-muted"></i>Registered Teachers</div>
+      <div class="card-body p-0">
+        {% if teachers %}
+        <table class="table table-hover mb-0">
+          <thead><tr>
+            <th class="ps-3">Name</th>
+            <th>Email</th>
+            <th>Students</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+          {% for t in teachers %}
+          <tr>
+            <td class="ps-3">
+              <div class="d-flex align-items-center gap-2">
+                <div style="width:30px;height:30px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0;">{{ t.name[0] }}</div>
+                <span style="font-weight:600;font-size:.875rem;">{{ t.name }}</span>
+              </div>
+            </td>
+            <td style="font-size:.82rem;color:#666;">{{ t.email }}</td>
+            <td>
+              {% set sc = namespace(c=0) %}{% for st in students %}{% if st.guide_id == t.id %}{% set sc.c = sc.c + 1 %}{% endif %}{% endfor %}
+              <span class="badge" style="background:var(--teal-light);color:var(--teal);">{{ sc.c }} student{{ 's' if sc.c!=1 }}</span>
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('admin_delete_user', uid=t.id) }}" style="display:inline;" onsubmit="return confirm('Remove teacher {{ t.name }}? This cannot be undone.')">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:6px;font-size:.72rem;">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted" style="font-size:.875rem;">
+          No teachers yet. Add one using the form on the left.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- STUDENTS LIST -->
+    <div class="card">
+      <div class="card-header"><i class="fas fa-user-graduate me-2 text-muted"></i>Registered Students</div>
+      <div class="card-body p-0">
+        {% if students %}
+        <table class="table table-hover mb-0">
+          <thead><tr>
+            <th class="ps-3">Name</th>
+            <th>Email</th>
+            <th>Guide</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+          {% for s in students %}
+          <tr>
+            <td class="ps-3">
+              <div class="d-flex align-items-center gap-2">
+                <div style="width:30px;height:30px;border-radius:50%;background:#e8f0fe;color:#3b5bdb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0;">{{ s.name[0] }}</div>
+                <span style="font-size:.875rem;">{{ s.name }}</span>
+              </div>
+            </td>
+            <td style="font-size:.82rem;color:#666;">{{ s.email }}</td>
+            <td style="font-size:.82rem;">
+              {% if s.guide_name %}
+                <span class="badge" style="background:var(--teal-light);color:var(--teal);">{{ s.guide_name }}</span>
+              {% else %}
+                <span class="badge" style="background:var(--amber-light);color:var(--amber);">Unassigned</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('admin_delete_user', uid=s.id) }}" style="display:inline;" onsubmit="return confirm('Remove student {{ s.name }}?')">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:6px;font-size:.72rem;">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted" style="font-size:.875rem;">No students registered yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

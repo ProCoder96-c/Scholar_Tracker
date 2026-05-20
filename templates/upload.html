@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Upload Project — Scholar Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Upload Project</h2>
+  <p>Submit your entire project — any files, any folder structure, just like pushing to a repository</p>
+</div>
+
+<div class="row g-4 justify-content-center">
+  <div class="col-lg-8">
+    <div class="card" style="border-top:3px solid var(--gold);">
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data" id="uploadForm">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+          <div class="mb-4">
+            <label class="form-label" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600;">Project Title</label>
+            <input type="text" name="project_title" class="form-control" required
+              placeholder="e.g. Smart Attendance System using ML"
+              style="border:1px solid var(--cream);border-radius:8px;"/>
+            <div class="form-text">Use the <strong>exact same title</strong> for revisions — they group as v1, v2, v3…</div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600;">
+              Version Note <span style="color:#bbb;font-weight:400;">(commit message)</span>
+            </label>
+            <input type="text" name="commit_message" class="form-control"
+              placeholder="e.g. Added ML model, fixed preprocessing pipeline"
+              style="border:1px solid var(--cream);border-radius:8px;"/>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600;">
+              Assign to Teacher <span style="color:var(--gold);">*</span>
+            </label>
+            {% if guides %}
+            <select name="guide_id" class="form-select" required style="border:1px solid var(--cream);border-radius:8px;">
+              <option value="">— Select teacher —</option>
+              {% for g in guides %}
+              <option value="{{ g.id }}" {% if g.id == my_guide_id %}selected{% endif %}>{{ g.name }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            <div class="alert alert-warning">No teachers registered. Ask your Admin to add teachers first.</div>
+            <select name="guide_id" class="form-select" disabled><option>No teachers available</option></select>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600;">
+              Description <span style="color:#bbb;font-weight:400;">(optional)</span>
+            </label>
+            <textarea name="description" class="form-control" rows="2"
+              placeholder="What does this project do? Technologies used?"
+              style="border:1px solid var(--cream);border-radius:8px;resize:none;"></textarea>
+          </div>
+
+          <!-- Upload Mode Tabs -->
+          <div class="mb-3">
+            <label class="form-label" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#555;font-weight:600;">Upload Method</label>
+            <div class="d-flex gap-2 mb-3">
+              <button type="button" class="mode-tab active" data-mode="zip" onclick="setMode('zip')">
+                <i class="fas fa-file-archive me-1"></i> Upload ZIP
+              </button>
+              <button type="button" class="mode-tab" data-mode="folder" onclick="setMode('folder')">
+                <i class="fas fa-folder-open me-1"></i> Upload Folder
+              </button>
+            </div>
+            <input type="hidden" name="upload_mode" id="uploadMode" value="zip"/>
+          </div>
+
+          <!-- ZIP Panel -->
+          <div id="zipPanel">
+            <label for="zipInput" class="upload-zone" id="zipZone">
+              <div class="upload-icon"><i class="fas fa-file-archive"></i></div>
+              <div style="font-weight:600;margin-bottom:.3rem;">Drop your .zip here</div>
+              <div class="text-muted" style="font-size:.82rem;">or click to browse — max 100 MB</div>
+              <div id="zipLabel" class="mt-2 text-muted" style="font-size:.82rem;">No file selected</div>
+              <input type="file" id="zipInput" name="zipfile" accept=".zip"
+                     style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
+                     onchange="onZipSelect(this)"/>
+            </label>
+            <div id="zipPreview" class="mt-2" style="display:none;"></div>
+          </div>
+
+          <!-- Folder Panel -->
+          <div id="folderPanel" style="display:none;">
+            <label for="folderInput" class="upload-zone" id="folderZone">
+              <div class="upload-icon"><i class="fas fa-folder-open"></i></div>
+              <div style="font-weight:600;margin-bottom:.3rem;">Click to select a folder</div>
+              <div class="text-muted" style="font-size:.82rem;">All files inside are uploaded preserving folder structure</div>
+              <div id="folderLabel" class="mt-2 text-muted" style="font-size:.82rem;">No folder selected</div>
+              <input type="file" id="folderInput" name="files[]" multiple webkitdirectory
+                     style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"
+                     onchange="onFolderSelect(this)"/>
+            </label>
+            <div id="folderPreview" class="mt-2" style="display:none;"></div>
+            <div id="relPathInputs"></div>
+          </div>
+
+          <div class="alert mt-4" style="background:rgba(42,107,107,.07);border:1px solid rgba(42,107,107,.2);border-radius:10px;">
+            <div class="d-flex gap-2 align-items-start">
+              <i class="fas fa-code-branch mt-1" style="color:var(--teal);flex-shrink:0;"></i>
+              <div style="font-size:.82rem;">
+                <strong>Smart versioning</strong> — uploading the same title again creates v2, v3… Your teacher sees the full file history for every version.
+              </div>
+            </div>
+          </div>
+
+          <div class="d-grid mt-4">
+            <button type="submit" class="btn btn-gold" style="border-radius:10px;padding:.85rem;font-size:.95rem;" {% if not guides %}disabled{% endif %}>
+              <i class="fas fa-cloud-upload-alt me-2"></i> Submit Project for Review
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-check-circle me-2 text-muted"></i>Accepted Files</div>
+      <div class="card-body" style="font-size:.82rem;color:#666;line-height:2;">
+        <div><span style="color:var(--teal);font-weight:700;">Code</span> — .py .js .ts .java .c .cpp .go .rb .rs …</div>
+        <div><span style="color:var(--gold);font-weight:700;">Docs</span> — .pdf .docx .md .txt .tex .pptx …</div>
+        <div><span style="color:#3b5bdb;font-weight:700;">Config</span> — .json .yaml .env .toml .sql .xml …</div>
+        <div><span style="color:#c0392b;font-weight:700;">Web</span> — .html .css .scss .jsx .tsx .svg …</div>
+        <div style="color:#aaa;margin-top:.5rem;"><i class="fas fa-ban me-1"></i>.exe .dll .msi blocked for safety</div>
+      </div>
+    </div>
+    <div class="card mt-3">
+      <div class="card-header"><i class="fas fa-info-circle me-2 text-muted"></i>Tips</div>
+      <div class="card-body" style="font-size:.82rem;color:#666;line-height:1.8;">
+        <p><strong style="color:var(--ink);">📦 ZIP method</strong><br/>Zip your project folder, upload the .zip. Works on all browsers.</p>
+        <p class="mb-0"><strong style="color:var(--ink);">📁 Folder method</strong><br/>Select entire folder directly. Works on Chrome & Edge.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.mode-tab { background:#fff; border:2px solid var(--cream); border-radius:8px; padding:.45rem 1.1rem; font-size:.85rem; font-weight:600; color:#666; cursor:pointer; transition:all .15s; }
+.mode-tab.active { border-color:var(--teal); color:var(--teal); background:rgba(42,107,107,.06); }
+.upload-zone { border:2px dashed var(--cream); border-radius:12px; padding:2.5rem; text-align:center; cursor:pointer; transition:all .2s; background:#fff; }
+.upload-zone:hover, .upload-zone.drag { border-color:var(--gold); background:#fffdf5; }
+.upload-zone .upload-icon { font-size:2.5rem; color:var(--gold); margin-bottom:.75rem; }
+.file-preview { background:var(--paper); border:1px solid var(--cream); border-radius:8px; padding:.75rem 1rem; font-size:.78rem; font-family:monospace; max-height:200px; overflow-y:auto; line-height:1.8; }
+.file-preview .fp-dir { color:#3b5bdb; font-weight:600; }
+.file-preview .fp-file { color:#555; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function setMode(mode) {
+  document.getElementById('uploadMode').value = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+  document.getElementById('zipPanel').style.display    = mode === 'zip'    ? '' : 'none';
+  document.getElementById('folderPanel').style.display = mode === 'folder' ? '' : 'none';
+}
+// expose setMode to inline onclick handlers
+window.setMode = setMode;
+
+const zipZone = document.getElementById('zipZone');
+zipZone.addEventListener('dragover', e => { e.preventDefault(); zipZone.classList.add('drag'); });
+zipZone.addEventListener('dragleave', () => zipZone.classList.remove('drag'));
+zipZone.addEventListener('drop', e => {
+  e.preventDefault(); zipZone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.toLowerCase().endsWith('.zip')) {
+    const dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById('zipInput').files = dt.files;
+    onZipSelect(document.getElementById('zipInput'));
+  }
+});
+
+function onZipSelect(input) {
+  const file = input.files[0]; if (!file) return;
+  document.getElementById('zipLabel').textContent = file.name + ' (' + fmtSize(file.size) + ')';
+  zipZone.classList.add('drag');
+  document.getElementById('zipPreview').style.display = '';
+  document.getElementById('zipPreview').innerHTML =
+    '<div class="alert alert-success" style="border-radius:8px;font-size:.82rem;padding:.6rem 1rem;"><i class="fas fa-check-circle me-2"></i><strong>' + escHtml(file.name) + '</strong> — ' + escHtml(fmtSize(file.size)) + '</div>';
+}
+window.onZipSelect = onZipSelect;
+
+function onFolderSelect(input) {
+  const files = Array.from(input.files); if (!files.length) return;
+  const container = document.getElementById('relPathInputs');
+  container.innerHTML = '';
+  files.forEach(f => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'rel_paths[]';
+    inp.value = f.webkitRelativePath || f.name;
+    container.appendChild(inp);
+  });
+  const rootName = files[0].webkitRelativePath ? files[0].webkitRelativePath.split('/')[0] : 'folder';
+  document.getElementById('folderLabel').textContent = files.length + ' file(s) from "' + rootName + '"';
+  const tree = buildPreviewTree(files);
+  document.getElementById('folderPreview').style.display = '';
+  document.getElementById('folderPreview').innerHTML =
+    '<div style="font-size:.78rem;color:#666;margin-bottom:.4rem;">' + files.length + ' files selected:</div>' +
+    '<div class="file-preview">' + renderPreviewTree(tree, 0) + '</div>';
+}
+window.onFolderSelect = onFolderSelect;
+
+function buildPreviewTree(files) {
+  const t = {};
+  files.forEach(f => {
+    const parts = (f.webkitRelativePath || f.name).split('/');
+    let n = t;
+    parts.forEach((p, i) => {
+      if (i === parts.length - 1) { n[p] = null; }
+      else { n[p] = n[p] || {}; n = n[p]; }
+    });
+  });
+  return t;
+}
+function renderPreviewTree(tree, depth) {
+  return Object.entries(tree).map(([k, v]) => {
+    const pad = '&nbsp;'.repeat(depth * 4);
+    if (v === null) return `<div class="fp-file">${pad}<i class="fas fa-file-code me-1" style="opacity:.35;font-size:.7rem;"></i>${k}</div>`;
+    return `<div class="fp-dir">${pad}<i class="fas fa-folder me-1" style="font-size:.75rem;"></i>${k}/</div>` + renderPreviewTree(v, depth + 1);
+  }).join('');
+}
+function fmtSize(b) {
+  const u = ['B','KB','MB','GB']; let i = 0;
+  while (b >= 1024 && i < u.length-1) { b /= 1024; i++; }
+  return b.toFixed(1) + ' ' + u[i];
+}
+
+}); // end DOMContentLoaded
+</script>
+{% endblock %}

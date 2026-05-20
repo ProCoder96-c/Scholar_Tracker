@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""
+run.py
+------
+Main entry point for the ML-Powered Database Index Advisor.
+
+Usage:
+    python run.py --ingest          # Simulate/ingest query logs
+    python run.py --train           # Train the ML model
+    python run.py --recommend       # Generate recommendations (CLI)
+    python run.py --report          # Generate SQL script
+    python run.py --all             # Full pipeline
+"""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+# Ensure src is on path
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+try:
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
+    from rich import box
+    console = Console()
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
+    class FakeConsole:
+        def print(self, *args, **kwargs): print(*args)
+    console = FakeConsole()
+
+
+def run_ingest(n: int = 3000):
+    from query_ingester import ingest_from_postgres, simulate_query_logs
+
+    # Step 1: Pull real queries from PostgreSQL
+    console.print("[bold cyan]⚡ Ingesting from real PostgreSQL...[/bold cyan]")
+    CONN_STRING = "postgresql://postgres:Atharv94kale@localhost:5432/indexadvisor"
+    ingest_from_postgres(CONN_STRING)
+
+    # Step 2: Also add simulated load so model has enough data to train
+    console.print("[bold cyan]⚡ Adding simulated query load for training...[/bold cyan]")
+    simulate_query_logs(n, "logs/query_logs.db")
+
+    console.print(f"[bold green]✓ Hybrid ingestion complete[/bold green]")
+
+def run_train():
+    from index_advisor_model import train_models
+    console.print("[bold cyan]🧠 Training ML Models...[/bold cyan]")
+    train_models("logs/query_logs.db")
+
+
+def run_recommend():
+    from index_advisor_model import generate_recommendations
+    
+    console.print("[bold cyan]🔍 Generating Index Recommendations...[/bold cyan]\n")
+    recs = generate_recommendations("logs/query_logs.db")
+    
+    # Split into recommended and not
+    to_index = [r for r in recs if r["should_index"]]
+    skip = [r for r in recs if not r["should_index"]]
+    
+    # ── Recommendations Table ─────────────────────────────────────────────
+    table = Table(
+        title="📊 Index Recommendations",
+        box=box.ROUNDED,
+        title_style="bold white on dark_blue",
+        header_style="bold bright_white",
+        show_lines=True
+    )
+    
+    table.add_column("Priority", style="bold yellow", width=4)
+    table.add_column("Table", style="cyan")
+    table.add_column("Column", style="bright_white")
+    table.add_column("Index Type", style="magenta")
+    table.add_column("Improvement", style="bold green", justify="right")
+    table.add_column("Confidence", style="blue", justify="right")
+    table.add_column("Avg Time (ms)", style="red", justify="right")
+    table.add_column("Query Freq", justify="right")
+    table.add_column("Seq Scan %", justify="right")
+    
+    for i, r in enumerate(to_index[:15], 1):
+        imp = r["estimated_improvement_pct"]
+        imp_color = "bright_green" if imp > 60 else "yellow" if imp > 30 else "white"
+        
+        table.add_row(
+            f"#{i}",
+            r["table"],
+            r["column"],
+            r["index_type"],
+            f"[{imp_color}]{imp:.0f}%[/{imp_color}]",
+            f"{r['confidence']:.0%}",
+            f"{r['avg_exec_time_ms']:.0f}",
+            str(r["query_frequency"]),
+            f"{r['seq_scan_pct']:.0%}",
+        )
+    
+    console.print(table)
+    
+    # ── Already Indexed / Skip Table ─────────────────────────────────────
+    skip_table = Table(
+        title="✅ Already Optimized / Skip",
+        box=box.SIMPLE,
+        title_style="bold green",
+        header_style="bold dim"
+    )
+    skip_table.add_column("Table", style="dim")
+    skip_table.add_column("Column", style="dim")
+    skip_table.add_column("Reason", style="dim green")
+    
+    for r in skip[:10]:
+        reason = "Has index" if r["has_index"] else "Low traffic / Low impact"
+        skip_table.add_row(r["table"], r["column"], reason)
+    
+    console.print(skip_table)
+    
+    # ── Top SQL commands ──────────────────────────────────────────────────
+    console.print("\n[bold]🔧 Top SQL Commands to Run:[/bold]")
+    for r in to_index[:5]:
+        console.print(Panel(
+            f"[bold green]{r['sql']}[/bold green]\n"
+            f"[dim]-- Estimated {r['estimated_improvement_pct']:.0f}% improvement | "
+            f"Confidence: {r['confidence']:.0%} | Cardinality: {r['cardinality']}[/dim]",
+            border_style="bright_blue"
+        ))
+    
+    return recs
+
+
+def run_report():
+    from index_advisor_model import generate_recommendations
+    
+    recs = generate_recommendations("logs/query_logs.db")
+    recommended = [r for r in recs if r["should_index"]]
+    
+    lines = [
+        "-- ============================================================",
+        "-- AUTO-GENERATED INDEX RECOMMENDATIONS",
+        "-- Generated by ML-Powered Database Index Advisor",
+        "-- Review carefully before running in production!",
+        "-- ============================================================\n",
+        "BEGIN;\n"
+    ]
+    for r in recommended:
+        lines.append(f"-- {r['table']}.{r['column']}: ~{r['estimated_improvement_pct']:.0f}% improvement | confidence {r['confidence']:.0%}")
+        lines.append(r["sql"])
+    lines.append("\nCOMMIT;")
+    
+    script = "\n".join(lines)
+    Path("output_indexes.sql").write_text(script)
+    
+    console.print(Panel(
+        f"[bold green]✓ SQL script written to output_indexes.sql[/bold green]\n"
+        f"Contains {len(recommended)} index recommendations",
+        title="Report Generated",
+        border_style="green"
+    ))
+    console.print(f"\n[dim]{script[:800]}...[/dim]")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="ML-Powered DB Index Advisor")
+    parser.add_argument("--ingest",    action="store_true", help="Ingest query logs")
+    parser.add_argument("--train",     action="store_true", help="Train ML model")
+    parser.add_argument("--recommend", action="store_true", help="Generate recommendations")
+    parser.add_argument("--report",    action="store_true", help="Generate SQL script")
+    parser.add_argument("--all",       action="store_true", help="Run full pipeline")
+    parser.add_argument("--queries",   type=int, default=3000, help="Number of queries to simulate")
+    args = parser.parse_args()
+    
+    console.print(Panel.fit(
+        "[bold bright_white]ML-Powered Database Index Advisor[/bold bright_white]\n"
+        "[dim]Bridging DBMS Internals with Machine Learning[/dim]",
+        border_style="bright_blue",
+        padding=(1, 4)
+    ))
+    
+    if args.all or args.ingest:
+        run_ingest(args.queries)
+    
+    if args.all or args.train:
+        run_train()
+    
+    if args.all or args.recommend:
+        run_recommend()
+    
+    if args.all or args.report:
+        run_report()
+    
+    if not any([args.all, args.ingest, args.train, args.recommend, args.report]):
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

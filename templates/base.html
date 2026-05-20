@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Scholar Tracker{% endblock %}</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'"/>
+  <style>
+    :root {
+      --ink:#0f1923; --paper:#f7f4ef; --cream:#ede8df; --gold:#c9a84c;
+      --gold-light:#e8d5a3; --teal:#2a6b6b; --teal-light:#e0f0f0;
+      --red:#c0392b; --red-light:#fde8e6; --amber:#d4860a;
+      --amber-light:#fff3cd; --green:#1e7e47; --green-light:#d4edda;
+      --sidebar-w:260px;
+    }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,'Segoe UI',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh; display:flex; margin:0; }
+
+    #sidebar { width:var(--sidebar-w); min-height:100vh; background:var(--ink); position:fixed; top:0; left:0; display:flex; flex-direction:column; z-index:100; }
+    .sidebar-brand { padding:2rem 1.5rem 1.5rem; border-bottom:1px solid rgba(255,255,255,.08); }
+    .sidebar-brand h1 { font-family:Georgia,serif; font-size:1.3rem; color:#fff; margin:0; line-height:1.2; }
+    .brand-sub { font-size:.7rem; color:var(--gold-light); letter-spacing:.12em; text-transform:uppercase; }
+    .brand-icon { width:42px; height:42px; background:var(--gold); border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:.75rem; font-size:1.2rem; color:var(--ink); }
+    .sidebar-user { padding:1rem 1.5rem; border-bottom:1px solid rgba(255,255,255,.08); }
+    .avatar { width:36px; height:36px; border-radius:50%; background:var(--teal); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:.9rem; color:#fff; flex-shrink:0; }
+    .user-name { font-size:.85rem; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .user-role { font-size:.7rem; color:var(--gold-light); text-transform:uppercase; letter-spacing:.08em; }
+    .sidebar-nav { flex:1; padding:1.25rem 0; }
+    .nav-lbl { font-size:.65rem; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.35); padding:.5rem 1.5rem .25rem; margin-top:.5rem; }
+    .sidebar-link { display:flex; align-items:center; padding:.65rem 1.5rem; color:rgba(255,255,255,.65); text-decoration:none; font-size:.875rem; transition:all .2s; border-left:3px solid transparent; gap:.75rem; }
+    .sidebar-link i { width:18px; text-align:center; font-size:.9rem; }
+    .sidebar-link:hover { color:#fff; background:rgba(255,255,255,.05); }
+    .sidebar-link.active { color:var(--gold); border-left-color:var(--gold); background:rgba(201,168,76,.08); }
+    .sidebar-footer { padding:1rem 1.5rem; border-top:1px solid rgba(255,255,255,.08); }
+
+    #main { margin-left:var(--sidebar-w); flex:1; padding:2rem 2.5rem; min-height:100vh; }
+    .page-header { margin-bottom:2rem; padding-bottom:1.25rem; border-bottom:1px solid var(--cream); }
+    .page-header h2 { font-family:Georgia,serif; font-size:1.75rem; margin:0; }
+    .page-header p { color:#666; margin:.25rem 0 0; font-size:.9rem; }
+
+    .card { border:1px solid var(--cream); border-radius:12px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+    .card-header { background:transparent; border-bottom:1px solid var(--cream); padding:1rem 1.25rem; font-weight:600; font-size:.9rem; }
+
+    .badge-status { display:inline-flex; align-items:center; gap:.4rem; padding:.3rem .75rem; border-radius:20px; font-size:.75rem; font-weight:600; }
+    .badge-status::before { content:''; width:7px; height:7px; border-radius:50%; display:inline-block; }
+    .status-Pending { background:var(--amber-light); color:var(--amber); }
+    .status-Pending::before { background:var(--amber); }
+    .status-Approved { background:var(--green-light); color:var(--green); }
+    .status-Approved::before { background:var(--green); }
+    .status-NeedsChanges { background:var(--red-light); color:var(--red); }
+    .status-NeedsChanges::before { background:var(--red); }
+
+    .stat-card { border-radius:12px; padding:1.25rem; display:flex; align-items:center; gap:1rem; }
+    .stat-card .stat-icon { width:50px; height:50px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; }
+    .stat-card .stat-value { font-size:1.8rem; font-weight:700; line-height:1; }
+    .stat-card .stat-label { font-size:.78rem; color:#666; margin-top:.15rem; }
+    .stat-pending { background:var(--amber-light); }
+    .stat-pending .stat-icon { background:var(--amber); color:#fff; }
+    .stat-approved { background:var(--green-light); }
+    .stat-approved .stat-icon { background:var(--green); color:#fff; }
+    .stat-changes { background:var(--red-light); }
+    .stat-changes .stat-icon { background:var(--red); color:#fff; }
+    .stat-total { background:var(--teal-light); }
+    .stat-total .stat-icon { background:var(--teal); color:#fff; }
+
+    .btn-gold { background:var(--gold); color:var(--ink); font-weight:600; border:none; }
+    .btn-gold:hover { background:#b8943e; color:var(--ink); }
+    .btn-teal { background:var(--teal); color:#fff; font-weight:600; border:none; }
+    .btn-teal:hover { background:#235858; color:#fff; }
+
+    .table th { font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:#888; font-weight:600; border-top:none; }
+    .table td { vertical-align:middle; font-size:.875rem; }
+    .table-hover tbody tr:hover { background:var(--paper); }
+
+    .upload-zone { border:2px dashed var(--cream); border-radius:12px; padding:2.5rem; text-align:center; cursor:pointer; transition:all .2s; background:#fff; }
+    .upload-zone:hover, .upload-zone.drag { border-color:var(--gold); background:#fffdf5; }
+    .upload-zone .upload-icon { font-size:2.5rem; color:var(--gold); margin-bottom:.75rem; }
+
+    .version-timeline { position:relative; padding-left:1.5rem; }
+    .version-timeline::before { content:''; position:absolute; left:.4rem; top:0; bottom:0; width:2px; background:var(--cream); }
+    .version-item { position:relative; margin-bottom:1.25rem; }
+    .version-item::before { content:''; position:absolute; left:-1.1rem; top:.4rem; width:10px; height:10px; border-radius:50%; background:var(--gold); border:2px solid #fff; box-shadow:0 0 0 2px var(--gold); }
+
+    .milestone-row { display:flex; align-items:center; gap:.75rem; padding:.6rem 0; border-bottom:1px solid var(--cream); }
+    .milestone-row:last-child { border-bottom:none; }
+    .milestone-check { width:22px; height:22px; border-radius:6px; border:2px solid var(--cream); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .milestone-check.done { background:var(--green); border-color:var(--green); color:#fff; }
+    .milestone-overdue { color:var(--red); font-size:.75rem; }
+
+    .alert { border:none; border-radius:10px; font-size:.875rem; }
+
+    .search-hero { background:var(--ink); border-radius:16px; padding:2.5rem; text-align:center; margin-bottom:2rem; }
+    .search-hero h3 { font-family:Georgia,serif; color:#fff; margin-bottom:.5rem; }
+    .search-hero p { color:rgba(255,255,255,.5); font-size:.875rem; }
+    .search-input-wrap { max-width:540px; margin:1.25rem auto 0; position:relative; }
+    .search-input-wrap input { width:100%; padding:.85rem 3rem .85rem 1.25rem; border-radius:10px; border:none; font-size:.95rem; background:rgba(255,255,255,.1); color:#fff; outline:none; }
+    .search-input-wrap input::placeholder { color:rgba(255,255,255,.4); }
+    .search-input-wrap button { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:var(--gold); border:none; border-radius:7px; padding:.45rem .9rem; color:var(--ink); font-weight:600; cursor:pointer; }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--cream); border-radius:10px; }
+
+    @media (max-width:768px) {
+      #sidebar { transform:translateX(-100%); }
+      #main { margin-left:0; padding:1rem; }
+    }
+  </style>
+</head>
+<body>
+
+{% if session.user_id %}
+<nav id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
+    <h1>Scholar Tracker</h1>
+    <div class="brand-sub">Thesis Repository</div>
+  </div>
+  <div class="sidebar-user d-flex align-items-center">
+    <div class="avatar">{{ session.user_name[0] }}</div>
+    <div style="margin-left:.75rem;overflow:hidden;">
+      <div class="user-name">{{ session.user_name }}</div>
+      <div class="user-role">{{ session.role }}</div>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-lbl">Navigation</div>
+    <a href="{{ url_for('dashboard') }}" class="sidebar-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+      <i class="fas fa-th-large"></i> Dashboard
+    </a>
+    <a href="{{ url_for('repository') }}" class="sidebar-link {% if request.endpoint == 'repository' %}active{% endif %}">
+      <i class="fas fa-book-open"></i> Repository
+    </a>
+    {% if session.role == 'Student' %}
+    <div class="nav-lbl">Actions</div>
+    <a href="{{ url_for('upload') }}" class="sidebar-link {% if request.endpoint == 'upload' %}active{% endif %}">
+      <i class="fas fa-cloud-upload-alt"></i> Upload Submission
+    </a>
+    {% endif %}
+    {% if session.role == 'Guide' %}
+    <div class="nav-lbl">Management</div>
+    <a href="{{ url_for('students') }}" class="sidebar-link {% if request.endpoint == 'students' %}active{% endif %}">
+      <i class="fas fa-users"></i> My Students
+    </a>
+    <a href="{{ url_for('manage_milestones') }}" class="sidebar-link {% if request.endpoint == 'manage_milestones' %}active{% endif %}">
+      <i class="fas fa-tasks"></i> Milestones
+    </a>
+    {% endif %}
+    {% if session.role == 'Admin' %}
+    <div class="nav-lbl">Administration</div>
+    <a href="{{ url_for('repository') }}" class="sidebar-link">
+      <i class="fas fa-database"></i> Full Repository
+    </a>
+    {% endif %}
+  </div>
+  <div class="sidebar-footer">
+    <form method="POST" action="{{ url_for('logout') }}" style="margin:0;">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="sidebar-link" style="color:rgba(255,255,255,.4);background:none;border:none;width:100%;text-align:left;cursor:pointer;">
+        <i class="fas fa-sign-out-alt"></i> Sign Out
+      </button>
+    </form>
+  </div>
+</nav>
+{% endif %}
+
+<main id="main">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ 'danger' if cat == 'danger' else ('success' if cat == 'success' else ('warning' if cat == 'warning' else 'info')) }} alert-dismissible fade show" role="alert">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+<script>
+  var zone = document.querySelector('.upload-zone');
+  if (zone) {
+    zone.addEventListener('dragover', function(e) { e.preventDefault(); zone.classList.add('drag'); });
+    zone.addEventListener('dragleave', function() { zone.classList.remove('drag'); });
+    zone.addEventListener('drop', function(e) {
+      e.preventDefault(); zone.classList.remove('drag');
+      var files = e.dataTransfer.files;
+      if (files.length) {
+        var inp = document.getElementById('file');
+        if (inp) { inp.files = files; var lbl = document.getElementById('file-label'); if (lbl) lbl.textContent = files[0].name; }
+      }
+    });
+    zone.addEventListener('click', function() { var f = document.getElementById('file'); if (f) f.click(); });
+  }
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

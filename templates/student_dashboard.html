@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard — Scholar Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>My Dashboard</h2>
+  <p>Track your submissions, versions, and upcoming milestones</p>
+</div>
+
+<!-- STAT ROW -->
+{% set ns = namespace(approved=0, pending=0, changes=0) %}
+{% for sub in submissions %}
+  {% if sub.status == 'Approved' %}{% set ns.approved = ns.approved + 1 %}{% endif %}
+  {% if sub.status == 'Pending'  %}{% set ns.pending  = ns.pending  + 1 %}{% endif %}
+  {% if sub.status == 'Needs Changes' %}{% set ns.changes = ns.changes + 1 %}{% endif %}
+{% endfor %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-total">
+      <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+      <div><div class="stat-value">{{ submissions|length }}</div><div class="stat-label">Total Submissions</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-approved">
+      <div class="stat-icon"><i class="fas fa-check"></i></div>
+      <div><div class="stat-value">{{ ns.approved }}</div><div class="stat-label">Approved</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-pending">
+      <div class="stat-icon"><i class="fas fa-clock"></i></div>
+      <div><div class="stat-value">{{ ns.pending }}</div><div class="stat-label">Pending Review</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-changes">
+      <div class="stat-icon"><i class="fas fa-edit"></i></div>
+      <div><div class="stat-value">{{ ns.changes }}</div><div class="stat-label">Needs Changes</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- SUBMISSIONS TABLE -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-history me-2 text-muted"></i>My Submissions</span>
+        <a href="{{ url_for('upload') }}" class="btn btn-gold btn-sm" style="border-radius:7px;">
+          <i class="fas fa-plus me-1"></i> New Upload
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if submissions %}
+        <table class="table table-hover mb-0">
+          <thead><tr>
+            <th class="ps-3">Project Title</th>
+            <th>Version</th>
+            <th>Status</th>
+            <th>Uploaded</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+          {% for sub in submissions %}
+          <tr>
+            <td class="ps-3 fw-500">{{ sub.project_title }}</td>
+            <td><span class="badge bg-light text-dark border">v{{ sub.version_number }}</span></td>
+            <td>
+              <span class="badge-status status-{{ sub.status | replace(' ','') }}">
+                {{ sub.status }}
+              </span>
+            </td>
+            <td class="text-muted">{{ sub.upload_date | dateformat('%d %b %Y') }}</td>
+            <td>
+              <a href="{{ url_for('submission_detail', sub_id=sub.id) }}" class="btn btn-sm btn-outline-secondary" style="border-radius:6px;font-size:.75rem;">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="fas fa-inbox fa-2x mb-3 d-block" style="color:var(--cream)"></i>
+          No submissions yet. <a href="{{ url_for('upload') }}">Upload your first draft</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- FEEDBACK CARD (if any needs changes) -->
+    {% for sub in submissions %}
+    {% if sub.status == 'Needs Changes' and sub.teacher_feedback %}
+    <div class="card mt-3" style="border-left:4px solid var(--red);">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="fas fa-comment-dots" style="color:var(--red)"></i>
+          <strong>Guide Feedback</strong>
+          <span class="text-muted" style="font-size:.8rem;">— {{ sub.project_title }} v{{ sub.version_number }}</span>
+        </div>
+        <p class="mb-2" style="font-size:.9rem;">{{ sub.teacher_feedback }}</p>
+        <a href="{{ url_for('upload') }}" class="btn btn-sm btn-gold" style="border-radius:7px;">
+          <i class="fas fa-redo me-1"></i> Submit Revised Draft
+        </a>
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+  <!-- MILESTONES SIDEBAR -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-tasks me-2 text-muted"></i>Milestones</div>
+      <div class="card-body" style="padding:.75rem 1.25rem;">
+        {% if milestones %}
+          {% for m in milestones %}
+          <div class="milestone-row">
+            <form method="POST" action="{{ url_for('toggle_milestone', m_id=m.id) }}" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" style="background:none;border:none;padding:0;cursor:pointer;"><div class="milestone-check {% if m.completed %}done{% endif %}">
+                {% if m.completed %}<i class="fas fa-check" style="font-size:.6rem;"></i>{% endif %}
+              </div>
+            </form>
+            <div class="flex-grow-1">
+              <div style="font-size:.85rem;font-weight:500;{% if m.completed %}text-decoration:line-through;color:#aaa;{% endif %}">
+                {{ m.task_name }}
+              </div>
+              <div style="font-size:.75rem;color:#999;">
+                Due: {{ m.due_date | dateformat('%d %b %Y') }}
+                {% if not m.completed and m.due_date < today %}
+                  <span class="milestone-overdue ms-1"><i class="fas fa-exclamation-circle"></i> Overdue</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center py-3" style="font-size:.85rem;">No milestones assigned yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- QUICK UPLOAD CTA -->
+    <div class="card mt-3" style="background:var(--ink);border:none;">
+      <div class="card-body text-center py-4">
+        <i class="fas fa-cloud-upload-alt fa-2x mb-3" style="color:var(--gold)"></i>
+        <h6 style="color:#fff;font-family:Georgia,'Times New Roman',serif;">Upload a New Draft</h6>
+        <p style="color:rgba(255,255,255,.5);font-size:.8rem;">Every revision is saved as a new version — your history is always preserved.</p>
+        <a href="{{ url_for('upload') }}" class="btn btn-gold btn-sm w-100" style="border-radius:8px;">
+          <i class="fas fa-plus me-1"></i> Upload
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

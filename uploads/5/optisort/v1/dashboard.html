@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Index Advisor — Database Intelligence Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080c10;
+    --bg2:      #0d1117;
+    --bg3:      #131920;
+    --border:   #1e2d3d;
+    --border2:  #243447;
+    --teal:     #00d4aa;
+    --teal2:    #00f5c4;
+    --blue:     #3b8eea;
+    --red:      #ff4560;
+    --amber:    #ffb020;
+    --green:    #00e676;
+    --purple:   #9c6ade;
+    --text:     #c9d1d9;
+    --text-dim: #586069;
+    --text-mid: #8b949e;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid overlay background ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Scanline effect ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.15) 2px,
+      rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .page-wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    margin-bottom: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-icon {
+    width: 42px; height: 42px;
+    border: 1.5px solid var(--teal);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--teal);
+    box-shadow: 0 0 20px rgba(0,212,170,0.15);
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,212,170,0.15); }
+    50%       { box-shadow: 0 0 35px rgba(0,212,170,0.35); }
+  }
+
+  .logo-text h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-text p {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .status-dot {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--green);
+  }
+
+  .status-dot::before {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── KPI Cards ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .kpi-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent, var(--teal));
+  }
+
+  .kpi-card:hover { border-color: var(--border2); }
+
+  .kpi-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-size: 34px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: #fff;
+    line-height: 1;
+  }
+
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--text-mid);
+    margin-top: 6px;
+    font-family: var(--mono);
+  }
+
+  /* ── Section layout ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .full-col { margin-bottom: 32px; }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-mid);
+    font-family: var(--mono);
+  }
+
+  .card-badge {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(0,212,170,0.1);
+    color: var(--teal);
+    border: 1px solid rgba(0,212,170,0.2);
+  }
+
+  .card-body { padding: 20px; }
+
+  /* ── Recommendation rows ── */
+  .rec-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .rec-item {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    position: relative;
+    transition: all 0.2s;
+    cursor: default;
+  }
+
+  .rec-item:hover {
+    border-color: var(--teal);
+    box-shadow: 0 0 20px rgba(0,212,170,0.05);
+  }
+
+  .rec-item.high   { border-left: 3px solid var(--red); }
+  .rec-item.medium { border-left: 3px solid var(--amber); }
+  .rec-item.low    { border-left: 3px solid var(--blue); }
+
+  .rec-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .rec-id {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-right: 10px;
+  }
+
+  .rec-table-col {
+    flex: 1;
+  }
+
+  .rec-table { font-size: 12px; color: var(--text-mid); font-family: var(--mono); }
+  .rec-column { font-size: 15px; font-weight: 600; color: #fff; margin-top: 2px; }
+
+  .rec-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .badge {
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .badge-type {
+    background: rgba(59,142,234,0.12);
+    color: var(--blue);
+    border: 1px solid rgba(59,142,234,0.25);
+  }
+
+  .badge-improvement {
+    background: rgba(0,230,118,0.1);
+    color: var(--green);
+    border: 1px solid rgba(0,230,118,0.2);
+    font-size: 13px;
+  }
+
+  .rec-meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .meta-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .meta-value {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
+  .rec-sql {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--teal);
+    overflow-x: auto;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .copy-btn:hover { color: var(--teal); border-color: var(--teal); }
+
+  /* ── Confidence bar ── */
+  .conf-bar-wrap {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .conf-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .conf-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--teal));
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  /* ── Charts (canvas-based) ── */
+  #chart-timeseries, #chart-feature, #chart-scatter {
+    width: 100%;
+    height: 200px;
+  }
+
+  /* ── Feature importance bars ── */
+  .feat-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .feat-row {
+    display: grid;
+    grid-template-columns: 150px 1fr 45px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .feat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-mid);
+    text-align: right;
+  }
+
+  .feat-bar-bg {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .feat-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .feat-pct {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  /* ── SQL Output ── */
+  .sql-output {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .sql-comment { color: var(--text-dim); }
+  .sql-keyword { color: var(--blue); font-weight: 600; }
+  .sql-table   { color: var(--amber); }
+  .sql-column  { color: var(--teal); }
+  .sql-pct     { color: var(--green); }
+
+  /* ── Skip table ── */
+  .skip-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .skip-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .skip-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-mid);
+  }
+
+  .skip-table tr:last-child td { border-bottom: none; }
+
+  .skip-badge {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+
+  .skip-indexed {
+    background: rgba(0,230,118,0.08);
+    color: var(--green);
+  }
+
+  .skip-lowimpact {
+    background: rgba(88,96,105,0.2);
+    color: var(--text-dim);
+  }
+
+  /* ── Timeline chart ── */
+  .timeline-wrap { height: 140px; position: relative; }
+
+  svg text { font-family: var(--mono); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .tab {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 10px 20px;
+    cursor: pointer;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Scroll ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ── Animations ── */
+  .fade-in {
+    animation: fadeIn 0.6s ease both;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in-1 { animation-delay: 0.05s; }
+  .fade-in-2 { animation-delay: 0.1s; }
+  .fade-in-3 { animation-delay: 0.15s; }
+  .fade-in-4 { animation-delay: 0.2s; }
+
+  /* ── Tooltip ── */
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 5px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 100;
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-group">
+      <div class="logo-icon">⬡</div>
+      <div class="logo-text">
+        <h1>Index Advisor</h1>
+        <p>ML-POWERED DATABASE INTELLIGENCE CONSOLE</p>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot">MODEL ACTIVE</div>
+      <span id="run-time">—</span>
+      <span>PostgreSQL v16</span>
+    </div>
+  </header>
+
+  <!-- KPI row -->
+  <div class="kpi-row">
+    <div class="kpi-card fade-in fade-in-1" style="--accent: var(--teal)">
+      <div class="kpi-label">Queries Analyzed</div>
+      <div class="kpi-value" id="kpi-queries">3,000</div>
+      <div class="kpi-sub">Last 7 days</div>
+    </div>
+    <div class="kpi-card fade-in fade-in-2" style="--accent: var(--red)">
+      <div class="kpi-label">Indexes Recommended</div>
+      <div class="kpi-value" id="kpi-recs">11</div>
+      <div class="kpi-sub">High-confidence suggestions</div>
+    </div>
+    <div class="kpi-card fade-in fade-in-3" style="--accent: var(--green)">
+      <div class="kpi-label">Avg Improvement</div>
+      <div class="kpi-value" id="kpi-improvement">85%</div>
+      <div class="kpi-sub">Estimated read speedup</div>
+    </div>
+    <div class="kpi-card fade-in fade-in-4" style="--accent: var(--blue)">
+      <div class="kpi-label">Columns Analyzed</div>
+      <div class="kpi-value" id="kpi-cols">17</div>
+      <div class="kpi-sub">Across 7 tables</div>
+    </div>
+  </div>
+
+  <!-- Main content tabs -->
+  <div class="full-col fade-in" style="animation-delay:0.25s">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Analysis Output</span>
+        <button class="copy-btn" onclick="copyAllSQL()">⬇ Export SQL Script</button>
+      </div>
+      <div class="card-body">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('recs')">Recommendations</div>
+          <div class="tab" onclick="switchTab('skip')">Already Optimized</div>
+          <div class="tab" onclick="switchTab('sql')">SQL Script</div>
+          <div class="tab" onclick="switchTab('model')">Model Insights</div>
+        </div>
+
+        <!-- Tab: Recommendations -->
+        <div class="tab-panel active" id="panel-recs">
+          <div class="rec-list" id="rec-list"></div>
+        </div>
+
+        <!-- Tab: Skip -->
+        <div class="tab-panel" id="panel-skip">
+          <table class="skip-table">
+            <thead>
+              <tr>
+                <th>Table</th>
+                <th>Column</th>
+                <th>Avg Time (ms)</th>
+                <th>Query Freq</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="skip-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Tab: SQL Script -->
+        <div class="tab-panel" id="panel-sql">
+          <div class="sql-output" id="sql-output"></div>
+        </div>
+
+        <!-- Tab: Model Insights -->
+        <div class="tab-panel" id="panel-model">
+          <div style="margin-bottom:24px">
+            <div class="card-title" style="margin-bottom:16px">Feature Importances — GradientBoosting Classifier</div>
+            <div class="feat-list" id="feat-list"></div>
+          </div>
+          <div>
+            <div class="card-title" style="margin-bottom:16px">Execution Time Distribution (Indexed vs Unindexed)</div>
+            <canvas id="dist-chart" height="140"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: 2-col -->
+  <div class="two-col fade-in" style="animation-delay:0.3s">
+    <!-- Slowest columns -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Slowest Columns</span>
+        <span class="card-badge">TOP 8</span>
+      </div>
+      <div class="card-body">
+        <div id="slowest-list"></div>
+      </div>
+    </div>
+
+    <!-- Activity timeline -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Query Volume — 7 Day Window</span>
+        <span class="card-badge">HOURLY</span>
+      </div>
+      <div class="card-body">
+        <canvas id="timeline-chart" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    ML-POWERED DATABASE INDEX ADVISOR &nbsp;·&nbsp; GRADIENT BOOSTING CLASSIFIER &nbsp;·&nbsp; SCIKIT-LEARN 1.3 &nbsp;·&nbsp; POSTGRESQL B-TREE / BRIN
+  </footer>
+</div>
+
+<script>
+// ─── Data (embedded from Python pipeline output) ──────────────────────────────
+
+const RECOMMENDATIONS = [
+  { table:"orders", column:"created_at", indexType:"BRIN", improvement:85, confidence:0.99, avgTime:3200, freq:187, seqScan:1.0, cardinality:"HIGH", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_orders_created_at ON orders USING BRIN (created_at);" },
+  { table:"payments", column:"amount", indexType:"B-Tree", improvement:85, confidence:0.99, avgTime:3100, freq:178, seqScan:1.0, cardinality:"HIGH", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_payments_amount ON payments (amount);" },
+  { table:"products", column:"price", indexType:"B-Tree", improvement:85, confidence:0.99, avgTime:2700, freq:182, seqScan:1.0, cardinality:"HIGH", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_products_price ON products (price);" },
+  { table:"logs", column:"event_type", indexType:"Partial", improvement:72, confidence:0.96, avgTime:4500, freq:276, seqScan:1.0, cardinality:"LOW", hasIndex:false, sql:"CREATE INDEX idx_logs_event_type ON logs (event_type) WHERE event_type IS NOT NULL;" },
+  { table:"logs", column:"user_id", indexType:"B-Tree", improvement:85, confidence:0.99, avgTime:1200, freq:143, seqScan:1.0, cardinality:"HIGH", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_logs_user_id ON logs (user_id);" },
+  { table:"logs", column:"created_at", indexType:"BRIN", improvement:85, confidence:0.99, avgTime:1200, freq:143, seqScan:1.0, cardinality:"HIGH", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_logs_created_at ON logs USING BRIN (created_at);" },
+  { table:"users", column:"country", indexType:"Partial", improvement:65, confidence:0.91, avgTime:1800, freq:112, seqScan:1.0, cardinality:"LOW", hasIndex:false, sql:"CREATE INDEX idx_users_country ON users (country) WHERE country IS NOT NULL;" },
+  { table:"sessions", column:"user_id", indexType:"B-Tree", improvement:85, confidence:0.98, avgTime:780, freq:96, seqScan:1.0, cardinality:"HIGH", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_sessions_user_id ON sessions (user_id);" },
+  { table:"users", column:"email", indexType:"B-Tree", improvement:85, confidence:0.97, avgTime:600, freq:87, seqScan:1.0, cardinality:"HIGH", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_users_email ON users (email);" },
+  { table:"products", column:"category_id", indexType:"B-Tree", improvement:85, confidence:0.97, avgTime:950, freq:142, seqScan:1.0, cardinality:"MEDIUM", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_products_category_id ON products (category_id);" },
+  { table:"reviews", column:"product_id", indexType:"B-Tree", improvement:85, confidence:0.96, avgTime:890, freq:118, seqScan:1.0, cardinality:"HIGH", hasIndex:false, sql:"CREATE INDEX CONCURRENTLY idx_reviews_product_id ON reviews (product_id);" },
+];
+
+const SKIP = [
+  { table:"orders", column:"user_id", avgTime:85, freq:187, reason:"indexed" },
+  { table:"orders", column:"status", avgTime:168, freq:201, reason:"low-impact" },
+  { table:"payments", column:"order_id", avgTime:43, freq:155, reason:"indexed" },
+  { table:"users", column:"id", avgTime:12, freq:89, reason:"indexed" },
+  { table:"inventory", column:"product_id", avgTime:34, freq:76, reason:"indexed" },
+  { table:"sessions", column:"active", avgTime:71, freq:96, reason:"low-cardinality" },
+];
+
+const FEATURES = [
+  { name:"cardinality_numeric", importance: 0.675 },
+  { name:"has_index",           importance: 0.074 },
+  { name:"cost_pressure",       importance: 0.053 },
+  { name:"query_frequency",     importance: 0.052 },
+  { name:"query_weight",        importance: 0.051 },
+  { name:"max_exec_time_ms",    importance: 0.040 },
+  { name:"seq_scan_pct",        importance: 0.034 },
+  { name:"avg_exec_time_ms",    importance: 0.020 },
+  { name:"index_opportunity",   importance: 0.003 },
+];
+
+// ─── Render Recommendations ───────────────────────────────────────────────────
+
+function priorityLabel(imp) {
+  if (imp >= 80) return "high";
+  if (imp >= 60) return "medium";
+  return "low";
+}
+
+function renderRecs() {
+  const container = document.getElementById("rec-list");
+  RECOMMENDATIONS.forEach((r, i) => {
+    const pri = priorityLabel(r.improvement);
+    const div = document.createElement("div");
+    div.className = `rec-item ${pri}`;
+    div.style.animationDelay = `${0.05 * i}s`;
+    div.innerHTML = `
+      <div class="rec-top">
+        <span class="rec-id">#${String(i+1).padStart(2,'0')}</span>
+        <div class="rec-table-col">
+          <div class="rec-table">${r.table}</div>
+          <div class="rec-column">${r.column}</div>
+        </div>
+        <div class="rec-badges">
+          <span class="badge badge-type">${r.indexType}</span>
+          <span class="badge badge-improvement">↑ ${r.improvement}%</span>
+        </div>
+      </div>
+      <div class="rec-meta">
+        <div class="meta-item">AVG EXEC TIME<div class="meta-value" style="color:var(--red)">${r.avgTime.toLocaleString()} ms</div></div>
+        <div class="meta-item">QUERY FREQ<div class="meta-value">${r.freq}/week</div></div>
+        <div class="meta-item">SEQ SCAN<div class="meta-value">${(r.seqScan*100).toFixed(0)}%</div></div>
+        <div class="meta-item">CARDINALITY<div class="meta-value">${r.cardinality}</div></div>
+      </div>
+      <div class="rec-sql">
+        <code>${r.sql}</code>
+        <button class="copy-btn" onclick="copySQL(this, \`${r.sql}\`)">COPY</button>
+      </div>
+      <div class="conf-bar-wrap">
+        <span>CONFIDENCE</span>
+        <div class="conf-bar"><div class="conf-fill" style="width:${r.confidence*100}%"></div></div>
+        <span>${(r.confidence*100).toFixed(0)}%</span>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function renderSkip() {
+  const tbody = document.getElementById("skip-tbody");
+  SKIP.forEach(r => {
+    const badgeClass = r.reason === "indexed" ? "skip-indexed" : "skip-lowimpact";
+    const badgeLabel = r.reason === "indexed" ? "Already Indexed" :
+                       r.reason === "low-cardinality" ? "Low Cardinality" : "Low Impact";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.table}</td>
+      <td>${r.column}</td>
+      <td>${r.avgTime}</td>
+      <td>${r.freq}/week</td>
+      <td><span class="skip-badge ${badgeClass}">${badgeLabel}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderSQL() {
+  const out = document.getElementById("sql-output");
+  const lines = [
+    `<span class="sql-comment">-- ============================================================</span>`,
+    `<span class="sql-comment">-- AUTO-GENERATED INDEX RECOMMENDATIONS</span>`,
+    `<span class="sql-comment">-- ML-Powered Database Index Advisor | GradientBoosting v1.0</span>`,
+    `<span class="sql-comment">-- Generated: ${new Date().toISOString()}</span>`,
+    `<span class="sql-comment">-- Review carefully before running in production!</span>`,
+    `<span class="sql-comment">-- ============================================================</span>`,
+    ``,
+    `<span class="sql-keyword">BEGIN</span>;`,
+  ];
+
+  RECOMMENDATIONS.forEach(r => {
+    lines.push(``);
+    lines.push(`<span class="sql-comment">-- ${r.table}.${r.column}: ~<span class="sql-pct">${r.improvement}%</span> improvement expected (confidence ${(r.confidence*100).toFixed(0)}%)</span>`);
+    lines.push(highlightSQL(r.sql));
+  });
+
+  lines.push(``);
+  lines.push(`<span class="sql-keyword">COMMIT</span>;`);
+  out.innerHTML = lines.join("\n");
+}
+
+function highlightSQL(sql) {
+  return sql
+    .replace(/\b(CREATE|INDEX|CONCURRENTLY|ON|USING|WHERE|NOT|NULL)\b/g, `<span class="sql-keyword">$1</span>`)
+    .replace(/\b(idx_\w+)\b/g, `<span class="sql-column">$1</span>`);
+}
+
+function renderFeatures() {
+  const container = document.getElementById("feat-list");
+  const colors = ["#00d4aa","#3b8eea","#ffb020","#ff4560","#9c6ade","#00e676","#3b8eea","#00d4aa","#586069"];
+  FEATURES.forEach((f, i) => {
+    const div = document.createElement("div");
+    div.className = "feat-row";
+    div.innerHTML = `
+      <div class="feat-label">${f.name}</div>
+      <div class="feat-bar-bg">
+        <div class="feat-bar-fill" style="width:${f.importance*100}%;background:${colors[i%colors.length]}"></div>
+      </div>
+      <div class="feat-pct">${(f.importance*100).toFixed(1)}%</div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// ─── Charts ──────────────────────────────────────────────────────────────────
+
+function renderSlowList() {
+  const container = document.getElementById("slowest-list");
+  const maxTime = Math.max(...RECOMMENDATIONS.map(r => r.avgTime));
+
+  RECOMMENDATIONS
+    .sort((a,b) => b.avgTime - a.avgTime)
+    .slice(0, 8)
+    .forEach(r => {
+      const pct = (r.avgTime / maxTime * 100).toFixed(1);
+      const color = r.avgTime > 2000 ? "var(--red)" : r.avgTime > 1000 ? "var(--amber)" : "var(--teal)";
+      const div = document.createElement("div");
+      div.style.cssText = "margin-bottom:12px";
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-family:var(--mono);font-size:11px">
+          <span style="color:var(--text-mid)">${r.table}.<span style="color:#fff">${r.column}</span></span>
+          <span style="color:${color}">${r.avgTime.toLocaleString()} ms</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width 1s ease"></div>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+}
+
+function renderTimeline() {
+  const canvas = document.getElementById("timeline-chart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+
+  // Generate fake hourly data over 7 days = 168 points
+  const data = [];
+  for (let i = 0; i < 168; i++) {
+    const hour = i % 24;
+    const peakFactor = hour >= 8 && hour <= 20 ? 1.5 : 0.4;
+    data.push(Math.max(5, Math.round(peakFactor * (15 + Math.random() * 25))));
+  }
+
+  const max = Math.max(...data);
+  const pad = { t: 10, r: 10, b: 25, l: 30 };
+  const gW = W - pad.l - pad.r;
+  const gH = H - pad.t - pad.b;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw grid lines
+  ctx.strokeStyle = "rgba(30,45,61,0.8)";
+  ctx.lineWidth = 1;
+  for (let g = 0; g <= 4; g++) {
+    const y = pad.t + gH * (1 - g / 4);
+    ctx.beginPath();
+    ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + gW, y);
+    ctx.stroke();
+  }
+
+  // Area gradient
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + gH);
+  grad.addColorStop(0, "rgba(0,212,170,0.25)");
+  grad.addColorStop(1, "rgba(0,212,170,0)");
+
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = pad.l + (i / (data.length - 1)) * gW;
+    const y = pad.t + gH * (1 - v / max);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+
+  // Close for fill
+  ctx.lineTo(pad.l + gW, pad.t + gH);
+  ctx.lineTo(pad.l, pad.t + gH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = pad.l + (i / (data.length - 1)) * gW;
+    const y = pad.t + gH * (1 - v / max);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = "rgba(0,212,170,0.8)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Day labels
+  ctx.fillStyle = "rgba(88,96,105,0.8)";
+  ctx.font = "9px JetBrains Mono";
+  ctx.textAlign = "center";
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  days.forEach((d, i) => {
+    const x = pad.l + (i / 6) * gW;
+    ctx.fillText(d, x, H - 5);
+  });
+}
+
+function renderDistChart() {
+  const canvas = document.getElementById("dist-chart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+  const pad = { t: 10, r: 120, b: 30, l: 40 };
+  const gW = W - pad.l - pad.r;
+  const gH = H - pad.t - pad.b;
+
+  // Two simulated distributions
+  function normal(x, mu, sigma) {
+    return Math.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * Math.sqrt(2 * Math.PI));
+  }
+
+  const xs = [];
+  for (let x = 0; x <= 5000; x += 50) xs.push(x);
+
+  const indexed   = xs.map(x => normal(x, 200, 80));
+  const unindexed = xs.map(x => normal(x, 2200, 600));
+
+  const maxY = Math.max(...indexed, ...unindexed);
+
+  function drawCurve(data, color, label) {
+    const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + gH);
+    grad.addColorStop(0, color.replace(")", ",0.3)").replace("rgb","rgba"));
+    grad.addColorStop(1, color.replace(")", ",0)").replace("rgb","rgba"));
+
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = pad.l + (xs[i] / 5000) * gW;
+      const y = pad.t + gH * (1 - v / maxY);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.lineTo(pad.l + gW, pad.t + gH);
+    ctx.lineTo(pad.l, pad.t + gH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = pad.l + (xs[i] / 5000) * gW;
+      const y = pad.t + gH * (1 - v / maxY);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  drawCurve(indexed,   "rgb(0,212,170)", "Indexed");
+  drawCurve(unindexed, "rgb(255,69,96)", "Unindexed");
+
+  // X axis
+  ctx.strokeStyle = "rgba(30,45,61,0.9)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t + gH); ctx.lineTo(pad.l + gW, pad.t + gH);
+  ctx.stroke();
+
+  // Labels
+  ctx.font = "9px JetBrains Mono";
+  ctx.fillStyle = "rgba(88,96,105,0.9)";
+  ctx.textAlign = "center";
+  [0, 1000, 2000, 3000, 4000, 5000].forEach(v => {
+    const x = pad.l + (v / 5000) * gW;
+    ctx.fillText(`${v}`, x, H - 5);
+  });
+
+  // Legend
+  const legend = [
+    { label: "Indexed (~200ms)", color: "rgb(0,212,170)" },
+    { label: "Unindexed (~2200ms)", color: "rgb(255,69,96)" },
+  ];
+  legend.forEach((l, i) => {
+    const lx = W - pad.r + 12;
+    const ly = pad.t + 30 + i * 24;
+    ctx.fillStyle = l.color;
+    ctx.fillRect(lx, ly, 12, 3);
+    ctx.fillStyle = "rgba(139,148,158,0.9)";
+    ctx.textAlign = "left";
+    ctx.font = "9px JetBrains Mono";
+    ctx.fillText(l.label, lx + 16, ly + 4);
+  });
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  event.target.classList.add("active");
+  document.getElementById(`panel-${name}`).classList.add("active");
+  if (name === "model") { setTimeout(renderDistChart, 50); }
+}
+
+function copySQL(btn, sql) {
+  navigator.clipboard.writeText(sql).then(() => {
+    btn.textContent = "COPIED!";
+    setTimeout(() => btn.textContent = "COPY", 1500);
+  });
+}
+
+function copyAllSQL() {
+  const lines = [
+    "-- AUTO-GENERATED INDEX RECOMMENDATIONS",
+    `-- Generated: ${new Date().toISOString()}`,
+    "",
+    "BEGIN;",
+    ...RECOMMENDATIONS.map(r =>
+      `-- ${r.table}.${r.column}: ~${r.improvement}% improvement\n${r.sql}`
+    ),
+    "",
+    "COMMIT;"
+  ];
+  navigator.clipboard.writeText(lines.join("\n")).then(() => {
+    const btn = event.target;
+    btn.textContent = "COPIED!";
+    setTimeout(() => btn.textContent = "⬇ Export SQL Script", 1500);
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+document.addEventListener("DOMContentLoaded", async () => {
+  document.getElementById("run-time").textContent = new Date().toLocaleTimeString();
+
+  try {
+    // Fetch live data from Flask API
+    const [recRes, statRes] = await Promise.all([
+      fetch("http://127.0.0.1:5050/api/recommendations"),
+      fetch("http://127.0.0.1:5050/api/stats")
+    ]);
+
+    const recJson  = await recRes.json();
+    const statJson = await statRes.json();
+
+    const allRecs = recJson.data;
+    const toIndex = allRecs.filter(r => r.should_index);
+    const skip    = allRecs.filter(r => !r.should_index);
+
+    // Update KPI cards with real numbers
+    document.getElementById("kpi-queries").textContent  = statJson.total_queries.toLocaleString();
+    document.getElementById("kpi-recs").textContent     = toIndex.length;
+    document.getElementById("kpi-cols").textContent     = statJson.total_columns_analyzed;
+
+    const avgImp = toIndex.reduce((s, r) => s + r.estimated_improvement_pct, 0) / (toIndex.length || 1);
+    document.getElementById("kpi-improvement").textContent = Math.round(avgImp) + "%";
+
+    // Override RECOMMENDATIONS and SKIP with live data
+    window.RECOMMENDATIONS = toIndex.map(r => ({
+      table:       r.table,
+      column:      r.column,
+      indexType:   r.index_type,
+      improvement: Math.round(r.estimated_improvement_pct),
+      confidence:  r.confidence,
+      avgTime:     Math.round(r.avg_exec_time_ms),
+      freq:        r.query_frequency,
+      seqScan:     r.seq_scan_pct,
+      cardinality: r.cardinality,
+      hasIndex:    r.has_index,
+      sql:         r.sql
+    }));
+
+    window.SKIP = skip.map(r => ({
+      table:  r.table,
+      column: r.column,
+      avgTime: Math.round(r.avg_exec_time_ms),
+      freq:   r.query_frequency,
+      reason: r.has_index ? "indexed" : "low-impact"
+    }));
+
+  } catch (e) {
+    console.warn("API not reachable, using static data:", e);
+  }
+
+  renderRecs();
+  renderSkip();
+  renderSQL();
+  renderFeatures();
+  renderSlowList();
+  renderTimeline();
+
+  // Trigger feature bar animations after paint
+  setTimeout(() => {
+    document.querySelectorAll(".feat-bar-fill").forEach(el => {
+      const target = el.style.width;
+      el.style.width = "0";
+      requestAnimationFrame(() => { el.style.width = target; });
+    });
+  }, 300);
+});
+
+window.addEventListener("resize", () => {
+  renderTimeline();
+});
+</script>
+</body>
+</html>

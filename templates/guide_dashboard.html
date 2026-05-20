@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Guide Dashboard — Scholar Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Review Dashboard</h2>
+  <p>Oversee student submissions and provide structured feedback</p>
+</div>
+
+<!-- STATS -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-total">
+      <div class="stat-icon"><i class="fas fa-users"></i></div>
+      <div><div class="stat-value">{{ students|length }}</div><div class="stat-label">My Students</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-pending">
+      <div class="stat-icon"><i class="fas fa-inbox"></i></div>
+      <div><div class="stat-value">{{ pending }}</div><div class="stat-label">Awaiting Review</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-approved">
+      <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+      <div><div class="stat-value">{{ approved }}</div><div class="stat-label">Approved</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card stat-changes">
+      <div class="stat-icon"><i class="fas fa-redo"></i></div>
+      <div><div class="stat-value">{{ needs_changes }}</div><div class="stat-label">Needs Changes</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- RECENT SUBMISSIONS -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-file-import me-2 text-muted"></i>Recent Submissions</span>
+        <a href="{{ url_for('students') }}" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;font-size:.75rem;">
+          All Students <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_submissions %}
+        <table class="table table-hover mb-0">
+          <thead><tr>
+            <th class="ps-3">Student</th>
+            <th>Project</th>
+            <th>Ver.</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+          {% for sub in recent_submissions %}
+          <tr>
+            <td class="ps-3">
+              <div class="d-flex align-items-center gap-2">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--teal-light);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;flex-shrink:0;">
+                  {{ sub.student_name[0] }}
+                </div>
+                <span style="font-size:.875rem;">{{ sub.student_name }}</span>
+              </div>
+            </td>
+            <td style="font-size:.85rem;font-weight:500;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ sub.project_title }}</td>
+            <td><span class="badge bg-light text-dark border">v{{ sub.version_number }}</span></td>
+            <td>
+              <span class="badge-status status-{{ sub.status | replace(' ','') }}">{{ sub.status }}</span>
+            </td>
+            <td class="text-muted" style="font-size:.8rem;">{{ sub.upload_date | dateformat('%d %b') }}</td>
+            <td>
+              <a href="{{ url_for('submission_detail', sub_id=sub.id) }}" class="btn btn-sm btn-outline-secondary" style="border-radius:6px;font-size:.75rem;">
+                {% if sub.status == 'Pending' %}<i class="fas fa-pen me-1"></i>Review{% else %}View{% endif %}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="fas fa-inbox fa-2x mb-3 d-block" style="color:var(--cream)"></i>
+          No submissions from your students yet.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDENTS SIDEBAR -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-users me-2 text-muted"></i>My Students</div>
+      <div class="card-body p-0">
+        {% if students %}
+        {% for s in students %}
+        <div class="d-flex align-items-center gap-3 px-3 py-2" style="border-bottom:1px solid var(--cream);">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;flex-shrink:0;">
+            {{ s.name[0] }}
+          </div>
+          <div class="flex-grow-1">
+            <div style="font-size:.875rem;font-weight:600;">{{ s.name }}</div>
+            <div style="font-size:.75rem;color:#999;">{{ s.email }}</div>
+          </div>
+          <span class="badge" style="background:var(--cream);color:var(--ink);">{{ s.sub_count }} sub{{ 's' if s.sub_count != 1 }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center py-3" style="font-size:.85rem;">No students assigned yet.</p>
+        {% endif %}
+        <div class="p-2">
+          <a href="{{ url_for('students') }}" class="btn btn-gold w-100 btn-sm" style="border-radius:8px;">View All Students</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header"><i class="fas fa-tasks me-2 text-muted"></i>Quick Actions</div>
+      <div class="card-body d-grid gap-2">
+        <a href="{{ url_for('manage_milestones') }}" class="btn btn-outline-secondary" style="border-radius:8px;font-size:.85rem;">
+          <i class="fas fa-plus me-1"></i> Add Milestone
+        </a>
+        <a href="{{ url_for('repository') }}" class="btn btn-outline-secondary" style="border-radius:8px;font-size:.85rem;">
+          <i class="fas fa-book-open me-1"></i> Browse Repository
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
